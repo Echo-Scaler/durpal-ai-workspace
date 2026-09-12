@@ -1,0 +1,139 @@
+# Implementation Plan - Enterprise AI Knowledge Platform with Drupal & RAG (PHP-Native)
+
+ဤ Implementation Plan သည် **Drupal 10/11** နှင့် ၎င်း၏ Official **Drupal AI Ecosystem** (PHP-based) ကို အသုံးပြု၍ ကုမ္ပဏီများအလိုက် Document များ Upload ပြုလုပ်ကာ AI Chat ဖြင့် မေးခွန်းမေးနိုင်မည့် Enterprise Knowledge Hub တည်ဆောက်ရန် ရေးဆွဲထားခြင်း ဖြစ်ပါသည်။
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **ရွေးချယ်ထားသော နည်းပညာ Stack:**
+> - **CMS Platform:** Drupal 10/11 (PHP 8.2+)
+> - **Multi-Tenancy & Access Control:** Drupal `group` module (Company Workspaces)
+> - **Document Extraction:** `search_api_attachments` (သို့မဟုတ် Pure PHP `smalot/pdfparser` & Word parsers)
+> - **AI & RAG Engine:** `drupal/ai` (Official Drupal AI Initiative) + `search_api_ai`
+> - **Vector Database:** PostgreSQL with `pgvector` extension (Drupal database နှင့် တိုက်ရိုက်တွဲသုံးနိုင်သဖြင့် သီးသန့် server မလိုဘဲ အလွန်ချောမွေ့ပါသည်)
+
+---
+
+## ၁။ စနစ် ဗိသုကာပုံစံ (Architecture & Components)
+
+```mermaid
+flowchart TD
+    subgraph Client_Tier [Client / Frontend]
+        User([Company Employee / Admin])
+        ChatUI[Drupal AI Chat Assistant Block]
+    end
+
+    subgraph Drupal_PHP_Core [Drupal 10/11 - PHP Core]
+        GroupMod[Group Module: Company Workspaces]
+        MediaMod[Media Module: PDF / DOCX Ingestion]
+        DocExtract[Text Extractor: search_api_attachments / pdfparser]
+        DrupalAI[Drupal AI Module: RAG Orchestrator]
+    end
+
+    subgraph Storage_Tier [Database & Vector Store]
+        DB[(PostgreSQL + pgvector)]
+    end
+
+    subgraph AI_Tier [LLM Engine]
+        LLM[OpenAI / Claude / Local Ollama]
+    end
+
+    User -->|Access with Role| GroupMod
+    GroupMod --> MediaMod
+    MediaMod --> DocExtract
+    DocExtract -->|Extracted Text + Metadata| DrupalAI
+    DrupalAI -->|Store Vectors & Chunks| DB
+
+    User -->|Ask Question in Chat| ChatUI
+    ChatUI -->|Tenant Context + Query| DrupalAI
+    DrupalAI -->|Similarity Search with company_id filter| DB
+    DB -->|Relevant Chunks| DrupalAI
+    DrupalAI -->|System Prompt + Context| LLM
+    LLM -->|Answer with Citations| ChatUI
+```
+
+---
+
+## ၂။ အသေးစိတ် လုပ်ဆောင်ချက်များ (Detailed Specifications)
+
+### (က) Company Workspace (Multi-Tenancy Isolation)
+- **Module:** `drupal/group` (version 3.x)
+- **Group Type:** `company_workspace`
+- **Roles:**
+  - `Company Admin`: အဖွဲ့ဝင်များ ဖိတ်ခေါ်ခြင်း၊ Document အသစ်များ တင်ခြင်း/ဖျက်ခြင်း။
+  - `Company Member`: ကုမ္ပဏီအတွင်းရှိ Document များကို ဖတ်ရှုခြင်းနှင့် AI Chat မေးမြန်းခြင်း။
+- **Permissions:** ကုမ္ပဏီ A မှ အဖွဲ့ဝင်များသည် ကုမ္ပဏီ B ၏ Documents နှင့် AI Chat History များကို လုံးဝ ကြည့်ရှုခွင့်/မေးမြန်းခွင့် မရှိစေရန် Group Entity Access ဖြင့် တင်းကျပ်စွာ ထိန်းချုပ်မည်။
+
+---
+
+### (ခ) Document Upload & Text Extraction Pipeline
+- **File Formats:** `.pdf`, `.docx`, `.txt`
+- **Storage:** Drupal Private File System (`private://documents/`) — တိုက်ရိုက် URL ဖြင့် ဒေါင်းလုဒ်ဆွဲ၍ မရအောင် ကာကွယ်ထားမည်။
+- **Text Parsing:** 
+  - ရိုးရှင်းစွာစတင်ရန် Pure PHP Parser (`smalot/pdfparser`) ကို သုံးနိုင်ပြီး၊ ပိုမိုကြီးမားသော စာရွက်စာတမ်းများအတွက် `Apache Tika` container သို့မဟုတ် service နှင့် ချိတ်ဆက်မည်။
+  - Extracted Text ကို Drupal Search API Index သို့ တိုက်ရိုက် ပို့ဆောင်ပေးမည်။
+
+---
+
+### (ဂ) RAG Pipeline & Vector Database (PostgreSQL + pgvector)
+- **Vector Search Engine:** PostgreSQL တွင် `CREATE EXTENSION vector;` ကို အသုံးပြုမည်။
+- **Drupal AI Module Integration:**
+  - `drupal/ai` module သည် Search API Index တွင် ထည့်သွင်းထားသော Document များကို အလိုအလျောက် Chunking ပြုလုပ်ပြီး Embedding အဖြစ် ပြောင်းလဲပေးသည်။
+  - **Chunk Size:** 800 tokens, **Overlap:** 150 tokens.
+  - **Metadata:** `company_id`, `document_id`, `file_name`, `page_number`.
+- **Query Filter:** မေးခွန်းမေးတိုင်းတွင် Vector DB query ထဲသို့ `filter: { company_id: current_user_company_id }` ကို System Level မှ Hard-enforce လုပ်မည်။
+
+---
+
+### (ဃ) AI Chat Interface & Citations (ကိုးကားချက်များ)
+- Drupal Theme အတွင်း အဆင်သင့်သုံးနိုင်သော Chat Assistant Block ပံ့ပိုးမည်။
+- User မေးခွန်းမေးသည့်အခါ:
+  1. AI က Document ထဲမှ ရှာဖွေတွေ့ရှိသော အချက်အလက်များဖြင့်သာ ဖြေဆိုမည်။
+  2. အဖြေတိုင်း၏အောက်တွင် *"ကိုးကား: HR_Policy.pdf (စာမျက်နှာ ၄)"* စသည်ဖြင့် Source Citations ကို Click နှိပ်၍ မူရင်းဖိုင် ဖတ်နိုင်အောင် ပြသပေးမည်။
+
+---
+
+## ၃။ အဆင့်ဆင့် အကောင်အထည်ဖော်မည့် အစီအစဉ် (Phased Implementation)
+
+### [Phase 2] Project Scaffolding & Environment Setup
+- Drupal 10/11 recommended-project တည်ဆောက်ခြင်း။
+- လိုအပ်သော Modules များ သွင်းယူခြင်း (`drupal/group`, `drupal/ai`, `drupal/search_api`, `drupal/search_api_attachments`)။
+- PostgreSQL (pgvector) database ချိတ်ဆက်ခြင်း။
+
+### [Phase 3] Company Workspace & Document Management
+- Group Type (`company_workspace`) နှင့် Role-based Permissions သတ်မှတ်ခြင်း။
+- Document Media Entity Type ဖန်တီးပြီး Private Upload စနစ် ပြင်ဆင်ခြင်း။
+- PDF / DOCX Text Parser စမ်းသပ်ခြင်း။
+
+### [Phase 4] Drupal AI & RAG Configuration
+- Drupal AI module တွင် LLM Provider (OpenAI / Claude / Local Ollama) နှင့် Embedding model ချိတ်ဆက်ခြင်း။
+- Search API Vector Index သတ်မှတ်ပြီး Document များကို Vector Store ထဲသို့ Index လုပ်ခြင်း။
+- Company-isolated RAG Retrieval logic စမ်းသပ်ခြင်း။
+
+### [Phase 5] AI Chat Assistant Block & Verification
+- Workspace အလိုက် AI Chat UI တည်ဆောက်ခြင်း။
+- Citations ပါဝင်မှုနှင့် Multi-tenant isolation (ကုမ္ပဏီ A အချက်အလက်ကို ကုမ္ပဏီ B က မေးမရအောင်) Browser Subagent ဖြင့် စမ်းသပ်ခြင်း။
+
+### [Phase 6] Production Hardening & Dockerize
+- Docker Compose (Drupal + Nginx + PostgreSQL pgvector + Redis) တည်ဆောက်ခြင်း။
+- Production Security & Backup လမ်းညွှန်များ ပြုစုခြင်း။
+
+---
+
+## Verification Plan
+
+### Automated / Command-Line Checks:
+- Composer dependency compatibility စစ်ဆေးခြင်း။
+- Drupal Drush CLI ဖြင့် Group Entity, Media Type နှင့် Search API Index အခြေအနေများ စစ်ဆေးခြင်း:
+  ```bash
+  drush status
+  drush pm:list --status=enabled | grep -E "group|ai|search_api"
+  drush search-api:status
+  ```
+
+### Manual & Browser Verification:
+- Company Admin ဖြင့် login ဝင်ပြီး PDF တင်ခြင်း။
+- Company Member ဖြင့် Chat UI တွင် မေးခွန်းမေးပြီး စာမျက်နှာကိုးကားချက်ဖြင့် အဖြေထွက်မထွက် စစ်ဆေးခြင်း။
+- အခြား Company Member အကောင့်ဖြင့် ထို PDF ကို မေးခွန်းမေးကြည့်ရာတွင် အချက်အလက် မရရှိကြောင်း စစ်ဆေးခြင်း။

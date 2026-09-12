@@ -1,0 +1,204 @@
+AI ကို အဆင့်လိုက် (Step-by-Step) စနစ်တကျ ခိုင်းစေပြီး Phase တစ်ခုပြီးတိုင်း **Git Commit** ပြုလုပ်ကာ **Test / Verification** လုပ်ဆောင်နိုင်မည့် **AI Prompting Playbook & Instructions Guide** ဖြစ်ပါသည်။
+
+---
+
+### AI ကို အောင်မြင်စွာ Step-by-step ခိုင်းစေနိုင်သည့် နည်းဗျူဟာ (Golden Rules)
+
+AI ကို အလုပ်ခိုင်းရာတွင် အားလုံးတစ်ပြိုင်နက် မခိုင်းဘဲ အောက်ပါ Pattern အတိုင်း အမြဲတမ်း ညွှန်ကြားရပါမည်-
+1. **Scope Freeze:** "လက်ရှိအဆင့် (Phase) မှလွဲ၍ အခြား feature များကို မရေးပါနှင့်" ဟု ကန့်သတ်ခြင်း။
+2. **Verification First:** အဆင့်ပြီးတိုင်း Terminal command သို့မဟုတ် Test URL ဖြင့် စစ်ဆေးခိုင်းခြင်း။
+3. **Automated Commit:** Test အောင်မြင်မှသာ သတ်မှတ်ထားသော Git commit message ဖြင့် commit လုပ်ခိုင်းခြင်း။
+
+---
+
+## Phase-by-Phase AI Prompts Sequence
+
+အောက်ပါ Prompt များကို ကူးယူ၍ AI ထံသို့ **တစ်ခုပြီးမှ တစ်ခု (အဆင့်လိုက်)** ပေးပို့နိုင်ပါသည်-
+
+---
+
+### 🔹 Step 1: Environment & Base Drupal Setup (Docker + PostgreSQL with pgvector)
+
+**AI သို့ ပေးရမည့် Prompt:**
+```text
+Phase 1: Docker Environment & Drupal Base Setup ကို စတင်ပါမည်။
+အခြား Feature များ (Group module, AI module) ကို မလုပ်ဆောင်ပါနှင့်။
+
+လုပ်ဆောင်ရမည့်အချက်များ:
+1. Docker Compose ဖိုင် ရေးဆွဲပါ:
+   - PHP 8.2+ / Drupal 10 (သို့မဟုတ် 11) Container
+   - Nginx Web Server
+   - PostgreSQL 16+ with 'pgvector' extension enabled (`pgvector/pgvector:pg16`)
+2. Drupal Recommended Project ကို Composer ဖြင့် Scaffold ပြုလုပ်ပြီး Drush ပါဝင်အောင် သွင်းပါ။
+3. PostgreSQL DB သို့ ချိတ်ဆက်ပြီး `CREATE EXTENSION IF NOT EXISTS vector;` run ထားပါ။
+
+Verification:
+- `docker compose up -d` ဖြင့် service အားလုံး running ဖြစ်ရမည်။
+- `drush status` run သည့်အခါ Drupal bootstrap အောင်မြင်ရမည်။
+- PostgreSQL တွင် `\dx` စစ်ဆေးပါက vector extension ရှိနေရမည်။
+
+အထက်ပါ စစ်ဆေးမှု အောင်မြင်ပါက အောက်ပါအတိုင်း Git commit ပြုလုပ်ပြီး ရပ်တန့်ပါ:
+git add . && git commit -m "chore(infra): setup docker compose with drupal and pgvector"
+```
+
+---
+
+### 🔹 Step 2: Install Core & Contrib Modules
+
+**AI သို့ ပေးရမည့် Prompt:**
+```text
+Phase 2: လိုအပ်သော Drupal Modules များကို Composer ဖြင့် သွင်းယူပါမည်။ Configuration များ မစတင်ပါနှင့်။
+
+လုပ်ဆောင်ရမည့်အချက်များ:
+1. Composer ဖြင့် အောက်ပါ modules များကို require ပြုလုပ်ပါ:
+   - `drupal/group` (version ^3.0)
+   - `drupal/search_api`
+   - `drupal/search_api_attachments`
+   - `drupal/ai` (Drupal AI initiative)
+   - `smalot/pdfparser` (PHP-native PDF parser library)
+2. Modules များကို Drush ဖြင့် enable လုပ်ပါ:
+   `drush pm:enable group search_api search_api_attachments ai -y`
+
+Verification:
+- `drush pm:list --status=enabled | grep -E "group|search_api|ai"` ဖြင့် module များ enabled ဖြစ်နေကြောင်း ပြသရမည်။
+- Module conflict သို့မဟုတ် Composer dependency error မရှိရပါ။
+
+အထက်ပါ စစ်ဆေးမှု အောင်မြင်ပါက အောက်ပါအတိုင်း Git commit ပြုလုပ်ပါ:
+git add . && git commit -m "feat(modules): install group, search_api, ai, and pdfparser"
+```
+
+---
+
+### 🔹 Step 3: Multi-Tenancy Workspace (Group Module Setup)
+
+**AI သို့ ပေးရမည့် Prompt:**
+```text
+Phase 3: Company Workspace Multi-Tenancy Isolation ကို သတ်မှတ်ပါမည်။
+
+လုပ်ဆောင်ရမည့်အချက်များ:
+1. Group Type အသစ် ဖန်တီးပါ: `company_workspace`
+2. Group Roles သတ်မှတ်ပါ:
+   - `company_admin`: Member ဖိတ်ခေါ်ခွင့်၊ Document တင်ခွင့်/ဖျက်ခွင့်။
+   - `company_member`: Document ကြည့်ရှုခွင့်၊ AI Chat အသုံးပြုခွင့်။
+3. Permissions Isolation:
+   - ကုမ္ပဏီ A ၏ အဖွဲ့ဝင်များသည် ကုမ္ပဏီ B ၏ Group Content (Documents) များကို မမြင်နိုင်အောင် Entity Access Control သတ်မှတ်ပါ။
+4. စမ်းသပ်ရန်အတွက် Dummy Company Group ၂ ခု (`Company A`, `Company B`) နှင့် Test User ၂ ယောက် ဖန်တီးပါ။
+
+Verification:
+- `drush entity:query group` run ပါက ကုမ္ပဏီ group ၂ ခု ပြသရမည်။
+- User A အကောင့်ဖြင့် Company B ၏ workspace URL ကို ဝင်ရောက်ပါက 403 Access Denied ဖြစ်ရမည်။
+
+စစ်ဆေးမှု အောင်မြင်ပါက Git commit ပြုလုပ်ပါ:
+git add . && git commit -m "feat(group): configure company workspace group types and access control"
+```
+
+---
+
+### 🔹 Step 4: Private Document Media & PHP Text Extraction Pipeline
+
+**AI သို့ ပေးရမည့် Prompt:**
+```text
+Phase 4: Document Upload နှင့် Text Extraction Pipeline တည်ဆောက်ပါမည်။
+
+လုပ်ဆောင်ရမည့်အချက်များ:
+1. Drupal Private File System (`private://documents/`) ကို configure လုပ်ပါ။ တိုက်ရိုက် public URL access ကို ပိတ်ပါ။
+2. Media Bundle အသစ် `company_document` ဖန်တီးပြီး PDF/DOCX file field ထည့်ပါ။ ၎င်းကို `company_workspace` group content အဖြစ် ချိတ်ဆက်ပါ။
+3. `smalot/pdfparser` ကို အသုံးပြု၍ Upload တင်လိုက်သော PDF ဖိုင်များမှ Text ကို Extract ထုတ်ယူသည့် Service (သို့မဟုတ် `search_api_attachments` extractor plugin) ကို ပြင်ဆင်ပါ။
+4. Sample PDF တစ်ခုကို Company A တွင် တင်ပြီး Text Extraction မှန်ကန်စွာ ထွက်မထွက် စမ်းသပ်ပါ။
+
+Verification:
+- Upload လုပ်ထားသော PDF ဖိုင်ကို Private path တွင် သိမ်းဆည်းထားရမည် (Anonymous download မရရပါ)။
+- Test script / Drush command တစ်ခုဖြင့် Sample PDF မှ Raw Text ထွက်လာကြောင်း စစ်ဆေးပြပါ။
+
+စစ်ဆေးမှု အောင်မြင်ပါက Git commit ပြုလုပ်ပါ:
+git add . && git commit -m "feat(media): setup private document upload and php-native text parser"
+```
+
+---
+
+### 🔹 Step 5: Vector Database (pgvector) & Embedding Pipeline
+
+**AI သို့ ပေးရမည့် Prompt:**
+```text
+Phase 5: Search API Vector Index နှင့် Embedding Configuration ကို ပြုလုပ်ပါမည်။
+
+လုပ်ဆောင်ရမည့်အချက်များ:
+1. `drupal/ai` တွင် Embedding Provider (OpenAI `text-embedding-3-small` သို့မဟုတ် Local Ollama) ကို API Key / Host ဖြင့် ချိတ်ဆက်ပါ။
+2. Search API Server အသစ် ဖန်တီးပြီး Backend ကို PostgreSQL `pgvector` သို့မဟုတ် AI Vector Backend သတ်မှတ်ပါ။
+3. Search API Index အသစ် `company_documents_index` ဖန်တီးပါ:
+   - Chunk Size: 800 tokens, Overlap: 150 tokens.
+   - Indexed Fields: Extracted Content (Vectorized), `group_id` / `company_id` (Filtered), File Name.
+4. Phase 4 မှ တင်ထားသော Sample Document ကို Vector Index ထဲသို့ Index လုပ်ပါ။
+
+Verification:
+- `drush search-api:status` တွင် index items 100% indexed ဖြစ်ရမည်။
+- Database တွင် `SELECT COUNT(*) FROM <vector_table>;` ဖြင့် Vector embeddings တည်ရှိနေကြောင်း စစ်ဆေးပြပါ။
+
+စစ်ဆေးမှု အောင်မြင်ပါက Git commit ပြုလုပ်ပါ:
+git add . && git commit -m "feat(vector): configure search_api vector index and chunk embeddings"
+```
+
+---
+
+### 🔹 Step 6: Multi-Tenant RAG Retrieval & Tenant Isolation Test
+
+**AI သို့ ပေးရမည့် Prompt:**
+```text
+Phase 6: Multi-Tenant RAG Search Service နှင့် Security Isolation ကို တည်ဆောက်ပြီး စမ်းသပ်ပါမည်။
+
+လုပ်ဆောင်ရမည့်အချက်များ:
+1. Custom Drupal Service `DrupalRagService` တစ်ခု ရေးသားပါ:
+   - လက်ရှိ Active User ၏ `company_id` ကို Context မှ ယူပါ။
+   - Vector Similarity Search ပြုလုပ်ရာတွင် `WHERE company_id = :current_company_id` ကို မဖြစ်မနေ (Strict Enforcement) ထည့်သွင်းပါ။
+2. Document မတူညီသော Company A နှင့် Company B အတွက် Test Data ၂ ခု ထည့်ပါ:
+   - Company A Document: "Company A Annual Revenue is $5M"
+   - Company B Document: "Company B Secret Strategy is Project Titan"
+3. Isolation Verification Test ရေးပါ:
+   - Company A အနေဖြင့် Query လုပ်ပါက Project Titan အချက်အလက် **လုံးဝ မပါလာရပါ**။
+
+Verification:
+- PHPUnit Test သို့မဟုတ် Drush custom script ဖြင့် Company Cross-leakage မရှိကြောင်း PASS ဖြစ်ရမည်။
+
+စစ်ဆေးမှု အောင်မြင်ပါက Git commit ပြုလုပ်ပါ:
+git add . && git commit -m "feat(rag): implement tenant-isolated similarity search service"
+```
+
+---
+
+### 🔹 Step 7: AI Chat Assistant Block & Citations UI
+
+**AI သို့ ပေးရမည့် Prompt:**
+```text
+Phase 7: Frontend AI Chat Assistant Block နှင့် Citations Display ကို တည်ဆောက်ပါမည်။
+
+လုပ်ဆောင်ရမည့်အချက်များ:
+1. `company_workspace` စာမျက်နှာတွင် ပေါ်မည့် Custom Block `CompanyAiChatBlock` ဖန်တီးပါ။
+2. Modern, clean UI (Vanilla CSS / Glassmorphism ကဲ့သို့ သပ်ရပ်သော Styling) ဖြင့် Chat Interface ပြုလုပ်ပါ။
+3. Response Rendering:
+   - LLM မှ ပြန်လာသော အဖြေတွင် Source Citations (ဥပမာ: "ကိုးကား: HR_Policy.pdf, စာမျက်နှာ ၄") ကို Click နှိပ်၍ ဖတ်နိုင်သော link/badge အဖြစ် ဖော်ပြပါ။
+   - အဖြေထုတ်ရာတွင် RAG Context ထဲတွင် မပါသော အချက်များကို မဖြေရန် System Prompt ဖြင့် ကန့်သတ်ပါ။
+
+Verification:
+- Browser ဖြင့် Chat Block ကို ဖွင့်ပြီး မေးခွန်းမေးကြည့်ပါ။
+- အဖြေနှင့်အတူ Source Citation link မှန်ကန်စွာ ပေါ်လာရမည်။
+
+စစ်ဆေးမှု အောင်မြင်ပါက Git commit ပြုလုပ်ပါ:
+git add . && git commit -m "feat(ui): add modern ai chat assistant block with citations"
+```
+
+---
+
+## စီမံခန့်ခွဲသူ (User) အတွက် Workflow Summary
+
+```
+User Prompt (Step 1) 
+  ↳ AI executes code 
+  ↳ AI runs Verification Command 
+  ↳ Check Output -> အောင်မြင်ပါက `git commit`
+  ↳ User Prompt (Step 2) ပို့ဆောင်ပါ
+```
+
+အထက်ပါအတိုင်း Step တစ်ခုချင်းစီကို ညွှန်ကြားခြင်းဖြင့်:
+- ကုဒ်များ ရှုပ်ထွေးသွားခြင်း (Code Bloat / Hallucination) မှ ကာကွယ်နိုင်မည်။
+- ပြဿနာဖြစ်ပါက မည်သည့် Phase တွင် ဖြစ်သည်ကို ချက်ချင်းသိရှိပြီး Rollback လုပ်ရ လွယ်ကူစေမည်။
+- Git History သည်လည်း Enterprise Standard အတိုင်း Phase အလိုက် သန့်ရှင်းစွာ ကျန်ရှိနေမည် ဖြစ်ပါသည်။

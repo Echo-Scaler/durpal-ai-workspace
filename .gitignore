@@ -1,0 +1,39 @@
+# ─── Environment & Secrets ────────────────────────────────────────────────────
+.env
+# Allow committing .env.example only
+!.env.example
+
+# ─── Drupal Composer dependencies ────────────────────────────────────────────
+drupal/vendor/
+drupal/web/core/
+drupal/web/modules/contrib/
+drupal/web/themes/contrib/
+drupal/web/profiles/contrib/
+drupal/web/libraries/
+
+# ─── Drupal generated files ───────────────────────────────────────────────────
+drupal/web/sites/default/settings.php
+drupal/web/sites/default/services.yml
+drupal/web/sites/default/files/
+drupal/config/sync/
+
+# ─── Drush cache ──────────────────────────────────────────────────────────────
+drupal/.drush/
+
+# ─── macOS ────────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ─── Editor specific ─────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ─── Docker volumes (local data) ─────────────────────────────────────────────
+postgres_data/
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+*.log
