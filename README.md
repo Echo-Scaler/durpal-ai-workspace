@@ -81,3 +81,4 @@ ai-durpal-workspace/
 - [ ] `docker compose exec postgres psql -U drupal -d drupal -c "\dx"` — shows `vector` extension
 - [ ] `docker compose exec drupal drush status` — Drupal bootstrap successful
 - [ ] Visit [http://localhost:8080](http://localhost:8080) — Drupal site loads
+# durpal-ai-workspace
