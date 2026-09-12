@@ -1,0 +1,9 @@
+name: 'Company Document Extractor'
+type: module
+description: 'PHP-native text extraction using smalot/pdfparser for private company documents and Search API attachments.'
+core_version_requirement: ^10 || ^11
+package: 'AI Enterprise'
+dependencies:
+  - drupal:file
+  - drupal:media
+  - search_api_attachments:search_api_attachments

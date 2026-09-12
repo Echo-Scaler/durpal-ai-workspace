@@ -21,6 +21,7 @@
         "drupal/core-project-message": "^10.6",
         "drupal/core-recommended": "^10.6",
         "drupal/group": "^3.0",
+        "drupal/groupmedia": "^4.0",
         "drupal/search_api": "^1.41",
         "drupal/search_api_attachments": "^10.0",
         "drush/drush": "^13.8",

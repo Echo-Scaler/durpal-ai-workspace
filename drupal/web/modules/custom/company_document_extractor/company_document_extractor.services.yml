@@ -1,0 +1,8 @@
+services:
+  logger.channel.company_document_extractor:
+    parent: logger.channel_base
+    arguments: ['company_document_extractor']
+
+  company_document_extractor.pdf_parser:
+    class: Drupal\company_document_extractor\Service\PdfTextExtractor
+    arguments: ['@file_system', '@logger.channel.company_document_extractor']

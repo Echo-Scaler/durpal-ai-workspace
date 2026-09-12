@@ -1,0 +1,8 @@
+services:
+  company_document_extractor.commands:
+    class: Drupal\company_document_extractor\Commands\DocumentExtractorCommands
+    arguments:
+      - '@company_document_extractor.pdf_parser'
+      - '@entity_type.manager'
+    tags:
+      - { name: drush.command }
