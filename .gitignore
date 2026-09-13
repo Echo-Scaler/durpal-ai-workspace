@@ -6,7 +6,9 @@
 # ─── Drupal Composer dependencies ────────────────────────────────────────────
 drupal/vendor/
 drupal/web/core/
-drupal/web/modules/contrib/
+drupal/web/modules/contrib/*
+!drupal/web/modules/contrib/ai_vdb_provider_postgres/
+!drupal/web/modules/contrib/ai_provider_openai/
 drupal/web/themes/contrib/
 drupal/web/profiles/contrib/
 drupal/web/libraries/

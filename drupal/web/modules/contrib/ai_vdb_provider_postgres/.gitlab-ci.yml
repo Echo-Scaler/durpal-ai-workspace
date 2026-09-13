@@ -1,0 +1,32 @@
+include:
+  - project: $_GITLAB_TEMPLATES_REPO
+    ref: $_GITLAB_TEMPLATES_REF
+    file:
+      - '/includes/include.drupalci.main.yml'
+      - '/includes/include.drupalci.variables.yml'
+      - '/includes/include.drupalci.workflows.yml'
+
+variables:
+  _TARGET_DRUPAL: 11.0
+  _TARGET_PHP: 8.3
+  _PHPUNIT_EXTRA: --verbose
+  OPT_IN_TEST_PREVIOUS_MAJOR: 1
+  OPT_IN_TEST_PREVIOUS_MINOR: 0
+  OPT_IN_TEST_NEXT_MINOR: 1
+  OPT_IN_TEST_MAX_PHP: 1
+  _PHPUNIT_CONCURRENT: 1
+  SKIP_ESLINT: 1
+  # Ignore missing ext-pgsql platform requirement on the CI image
+  COMPOSER_EXTRA: --ignore-platform-req=ext-pgsql
+  _CSPELL_WORDS: 'currval, hnsw, indexdef, initdb, ivfflat, libpq, opclass, pgvector, schemaname'
+
+cspell:
+  allow_failure: true
+stylelint:
+  allow_failure: true
+phpcs:
+  allow_failure: true
+phpstan:
+  allow_failure: true
+  before_script:
+    - composer require --dev drush/drush --ignore-platform-req=ext-pgsql

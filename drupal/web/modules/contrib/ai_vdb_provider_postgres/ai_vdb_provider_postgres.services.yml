@@ -1,0 +1,12 @@
+services:
+  ai_vdb_provider_postgres.client:
+    class: Drupal\ai_vdb_provider_postgres\PostgresPgvectorClient
+
+  ai_vdb_provider_postgres.vector_index_config_subscriber:
+    class: Drupal\ai_vdb_provider_postgres\EventSubscriber\VectorIndexConfigSubscriber
+    arguments:
+      - '@ai.vdb_provider'
+      - '@ai_vdb_provider_postgres.client'
+      - '@logger.factory'
+    tags:
+      - { name: event_subscriber }
